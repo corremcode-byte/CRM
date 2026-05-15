@@ -3,17 +3,17 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { Enquiry, UserRole } from '@/lib/supabase/types'
-import { getLeadName, getLeadCountry, temperatureColor, statusColor, formatDateTime, SALES_STAGES } from '@/lib/utils'
+import { getLeadName, getLeadCountry, priorityColor, statusColor, formatDateTime, SALES_STAGES } from '@/lib/utils'
 
 interface Props {
   initialLeads: Enquiry[]
   role: UserRole
 }
 
-export default function AllLeadsClient({ initialLeads, role }: Props) {
+export default function AllLeadsClient({ initialLeads }: Props) {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [filterTemp, setFilterTemp] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
   const [filterSource, setFilterSource] = useState('')
   const [sortBy, setSortBy] = useState<'submitted_at' | 'lead_score' | 'next_followup_at'>('submitted_at')
 
@@ -29,7 +29,7 @@ export default function AllLeadsClient({ initialLeads, role }: Props) {
       )
     }
     if (filterStatus) list = list.filter(l => l.sales_status === filterStatus)
-    if (filterTemp) list = list.filter(l => l.lead_temperature === filterTemp)
+    if (filterPriority) list = list.filter(l => l.urgency === filterPriority)
     if (filterSource) list = list.filter(l => l.source === filterSource)
     list.sort((a, b) => {
       if (sortBy === 'lead_score') return (b.lead_score ?? 0) - (a.lead_score ?? 0)
@@ -41,7 +41,7 @@ export default function AllLeadsClient({ initialLeads, role }: Props) {
       return new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime()
     })
     return list
-  }, [initialLeads, search, filterStatus, filterTemp, filterSource, sortBy])
+  }, [initialLeads, search, filterStatus, filterPriority, filterSource, sortBy])
 
   return (
     <div className="space-y-5">
@@ -64,11 +64,11 @@ export default function AllLeadsClient({ initialLeads, role }: Props) {
           <option value="">All statuses</option>
           {SALES_STAGES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={filterTemp} onChange={e => setFilterTemp(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All temperatures</option>
-          <option value="hot">🔴 Hot</option>
-          <option value="warm">🟡 Warm</option>
-          <option value="cold">🔵 Cold</option>
+        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">All priorities</option>
+          <option value="High">🔴 High</option>
+          <option value="Medium">🟡 Medium</option>
+          <option value="Low">🟢 Low</option>
         </select>
         <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">All sources</option>
@@ -91,7 +91,7 @@ export default function AllLeadsClient({ initialLeads, role }: Props) {
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Contact</th>
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Country / Visa</th>
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Status</th>
-                <th className="text-left px-5 py-3 text-slate-400 font-medium">Temp</th>
+                <th className="text-left px-5 py-3 text-slate-400 font-medium">Priority</th>
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Score</th>
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Source</th>
                 <th className="text-left px-5 py-3 text-slate-400 font-medium">Submitted</th>
@@ -124,8 +124,8 @@ export default function AllLeadsClient({ initialLeads, role }: Props) {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${temperatureColor(lead.lead_temperature)}`}>
-                        {lead.lead_temperature ?? '—'}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${priorityColor(lead.urgency)}`}>
+                        {lead.urgency ?? '—'}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-slate-300 font-mono">{lead.lead_score ?? 0}</td>

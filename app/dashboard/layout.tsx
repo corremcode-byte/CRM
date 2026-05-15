@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Sidebar from '@/components/Sidebar'
-import TopBar from '@/components/TopBar'
+import AppShell from '@/components/AppShell'
 import type { UserRole } from '@/lib/supabase/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,14 +18,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const userName = profile?.full_name ?? user.email ?? 'User'
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar role={role} userName={userName} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar userId={user.id} role={role} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AppShell role={role} userName={userName} userId={user.id}>
+      {children}
+    </AppShell>
   )
 }

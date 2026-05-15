@@ -8,6 +8,15 @@ export function getLeadCountry(lead: Enquiry): string {
   return lead.country || lead.destination || '—'
 }
 
+export function priorityColor(urgency?: string | null): string {
+  switch (urgency) {
+    case 'High': return 'text-red-400 bg-red-400/10'
+    case 'Medium': return 'text-amber-400 bg-amber-400/10'
+    case 'Low': return 'text-green-400 bg-green-400/10'
+    default: return 'text-slate-400 bg-slate-400/10'
+  }
+}
+
 export function temperatureColor(temp?: string | null): string {
   switch (temp) {
     case 'hot': return 'text-red-400 bg-red-400/10'
@@ -59,13 +68,8 @@ export function formatDateTime(dateStr?: string | null): string {
 export const SALES_STAGES = [
   'New Lead',
   'Attempted Contact',
-  'Connected',
-  'Interested',
-  'Not Interested',
   'Follow-up',
-  'Qualified',
-  'Payment Pending',
-  'Paid',
+  'Interested',
 ] as const
 
 export const OPS_STAGES = [

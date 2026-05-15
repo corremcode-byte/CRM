@@ -13,6 +13,7 @@ export type SalesStatus =
   | 'Qualified'
   | 'Payment Pending'
   | 'Paid'
+  | 'Moved to Operations'
 
 export type OpsStatus =
   | 'Docs Pending'

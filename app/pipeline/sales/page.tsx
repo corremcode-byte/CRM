@@ -20,6 +20,7 @@ export default async function SalesPipelinePage() {
   const { data: leads = [] } = await supabase
     .from('enquiries')
     .select('*')
+    .neq('sales_status', 'Moved to Operations')
     .order('submitted_at', { ascending: false })
 
   const { data: agents = [] } = await supabase

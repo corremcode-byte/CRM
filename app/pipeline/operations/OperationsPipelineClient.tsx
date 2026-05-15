@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Enquiry, OpsStatus, UserRole } from '@/lib/supabase/types'
-import { OPS_STAGES, getLeadName, getLeadCountry, statusColor, formatDate } from '@/lib/utils'
+import { OPS_STAGES, getLeadName, getLeadCountry, formatDate } from '@/lib/utils'
 
 interface Props {
   initialLeads: Enquiry[]
@@ -12,24 +12,28 @@ interface Props {
   role: UserRole
 }
 
-export default function OperationsPipelineClient({ initialLeads, caseManagers, role }: Props) {
+export default function OperationsPipelineClient({ initialLeads, caseManagers }: Props) {
   const [leads, setLeads] = useState(initialLeads)
   const [search, setSearch] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
+  const [filterManager, setFilterManager] = useState('')
   const [view, setView] = useState<'kanban' | 'list'>('kanban')
   const supabase = createClient()
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return leads.filter(l => {
-      if (!q) return true
-      return (
+      const matchSearch = !q || (
         getLeadName(l).toLowerCase().includes(q) ||
         (l.phone ?? '').includes(q) ||
         getLeadCountry(l).toLowerCase().includes(q) ||
         (l.application_id ?? '').toLowerCase().includes(q)
       )
+      const matchPriority = !filterPriority || l.urgency === filterPriority
+      const matchManager = !filterManager || l.assigned_case_manager === filterManager
+      return matchSearch && matchPriority && matchManager
     })
-  }, [leads, search])
+  }, [leads, search, filterPriority, filterManager])
 
   async function updateOpsStatus(leadId: string, newStatus: OpsStatus) {
     const { error } = await supabase
@@ -83,7 +87,7 @@ export default function OperationsPipelineClient({ initialLeads, caseManagers, r
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Operations Pipeline</h1>
-          <p className="text-slate-400 text-sm mt-0.5">{filtered.length} active cases (Paid leads only)</p>
+          <p className="text-slate-400 text-sm mt-0.5">{filtered.length} active cases</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -101,13 +105,35 @@ export default function OperationsPipelineClient({ initialLeads, caseManagers, r
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search name, phone, application ID…"
           className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
         />
+        <select
+          value={filterPriority}
+          onChange={e => setFilterPriority(e.target.value)}
+          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">All priorities</option>
+          <option value="High">🔴 High</option>
+          <option value="Medium">🟡 Medium</option>
+          <option value="Low">🟢 Low</option>
+        </select>
+        {caseManagers.length > 0 && (
+          <select
+            value={filterManager}
+            onChange={e => setFilterManager(e.target.value)}
+            className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All agents</option>
+            {caseManagers.map(m => (
+              <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* KANBAN */}

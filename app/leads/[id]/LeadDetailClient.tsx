@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Enquiry, UserRole, SalesStatus, OpsStatus, Document } from '@/lib/supabase/types'
 import {
   SALES_STAGES, OPS_STAGES, DEFAULT_DOCUMENTS,
-  getLeadName, getLeadCountry, temperatureColor, statusColor, formatDateTime
+  getLeadName, getLeadCountry, temperatureColor, formatDateTime
 } from '@/lib/utils'
 
 interface Agent { id: string; full_name?: string | null; email?: string | null }
@@ -19,7 +19,7 @@ interface Props {
   caseManagers: Agent[]
 }
 
-export default function LeadDetailClient({ lead: initial, role, currentUserId, salesAgents, caseManagers }: Props) {
+export default function LeadDetailClient({ lead: initial, role, salesAgents, caseManagers }: Props) {
   const [lead, setLead] = useState<Enquiry>(initial)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -27,7 +27,6 @@ export default function LeadDetailClient({ lead: initial, role, currentUserId, s
   const supabase = createClient()
   const router = useRouter()
 
-  const isAdmin = role === 'admin'
   const isSales = role === 'sales' || role === 'admin'
   const isOps = role === 'operations' || role === 'admin'
 
@@ -52,7 +51,8 @@ export default function LeadDetailClient({ lead: initial, role, currentUserId, s
   }
 
   function toggleDoc(index: number) {
-    const docs = [...(lead.documents ?? DEFAULT_DOCUMENTS)] as Document[]
+    const base = (lead.documents && lead.documents.length > 0) ? lead.documents : DEFAULT_DOCUMENTS
+    const docs = [...base] as Document[]
     docs[index] = { ...docs[index], uploaded: !docs[index].uploaded }
     update('documents', docs)
   }

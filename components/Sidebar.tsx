@@ -7,6 +7,7 @@ import type { UserRole } from '@/lib/supabase/types'
 interface SidebarProps {
   role: UserRole
   userName: string
+  onClose?: () => void
 }
 
 interface NavItem {
@@ -24,7 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'User Management', href: '/admin/users', icon: '◉', roles: ['admin'] },
 ]
 
-export default function Sidebar({ role, userName }: SidebarProps) {
+export default function Sidebar({ role, userName, onClose }: SidebarProps) {
   const pathname = usePathname()
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(role))
 
@@ -36,10 +37,21 @@ export default function Sidebar({ role, userName }: SidebarProps) {
           <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-lg">Z</span>
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-white font-semibold text-sm leading-tight">Zeno Global</p>
             <p className="text-slate-400 text-xs">CRM System</p>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              aria-label="Close sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

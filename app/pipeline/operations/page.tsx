@@ -20,7 +20,7 @@ export default async function OperationsPipelinePage() {
   const { data: leads = [] } = await supabase
     .from('enquiries')
     .select('*')
-    .eq('payment_status', 'Paid')
+    .eq('sales_status', 'Moved to Operations')
     .order('submitted_at', { ascending: false })
 
   const { data: caseManagers = [] } = await supabase

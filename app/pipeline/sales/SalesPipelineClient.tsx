@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Enquiry, SalesStatus, UserRole } from '@/lib/supabase/types'
-import { SALES_STAGES, getLeadName, getLeadCountry, temperatureColor, statusColor, formatDate } from '@/lib/utils'
+import { SALES_STAGES, getLeadName, getLeadCountry, temperatureColor, formatDate } from '@/lib/utils'
 
 interface Props {
   initialLeads: Enquiry[]
@@ -15,12 +15,12 @@ interface Props {
 
 type ViewMode = 'kanban' | 'list'
 
-export default function SalesPipelineClient({ initialLeads, agents, currentUserId, role }: Props) {
+export default function SalesPipelineClient({ initialLeads, agents, role }: Props) {
   const [leads, setLeads] = useState(initialLeads)
   const [view, setView] = useState<ViewMode>('kanban')
   const [search, setSearch] = useState('')
   const [filterAgent, setFilterAgent] = useState('')
-  const [filterTemp, setFilterTemp] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
   const supabase = createClient()
 
   const filtered = useMemo(() => {
@@ -31,24 +31,30 @@ export default function SalesPipelineClient({ initialLeads, agents, currentUserI
       const q = search.toLowerCase()
       const matchSearch = !q || name.includes(q) || phone.includes(q) || country.includes(q)
       const matchAgent = !filterAgent || l.assigned_sales_agent === filterAgent
-      const matchTemp = !filterTemp || l.lead_temperature === filterTemp
-      return matchSearch && matchAgent && matchTemp
+      const matchPriority = !filterPriority || l.urgency === filterPriority
+      return matchSearch && matchAgent && matchPriority
     })
-  }, [leads, search, filterAgent, filterTemp])
+  }, [leads, search, filterAgent, filterPriority])
 
   async function updateStatus(leadId: string, newStatus: SalesStatus) {
-    const updateData: Partial<Enquiry> = { sales_status: newStatus }
-    if (newStatus === 'Paid') {
-      updateData.payment_status = 'Paid'
-    }
     const { error } = await supabase
       .from('enquiries')
-      .update(updateData)
+      .update({ sales_status: newStatus })
       .eq('id', leadId)
     if (!error) {
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, ...updateData } : l
+        l.id === leadId ? { ...l, sales_status: newStatus } : l
       ))
+    }
+  }
+
+  async function moveToOperations(leadId: string) {
+    const { error } = await supabase
+      .from('enquiries')
+      .update({ sales_status: 'Moved to Operations' })
+      .eq('id', leadId)
+    if (!error) {
+      setLeads(prev => prev.filter(l => l.id !== leadId))
     }
   }
 
@@ -108,14 +114,14 @@ export default function SalesPipelineClient({ initialLeads, agents, currentUserI
           className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
         />
         <select
-          value={filterTemp}
-          onChange={e => setFilterTemp(e.target.value)}
+          value={filterPriority}
+          onChange={e => setFilterPriority(e.target.value)}
           className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">All temperatures</option>
-          <option value="hot">🔴 Hot</option>
-          <option value="warm">🟡 Warm</option>
-          <option value="cold">🔵 Cold</option>
+          <option value="">All priorities</option>
+          <option value="High">🔴 High</option>
+          <option value="Medium">🟡 Medium</option>
+          <option value="Low">🟢 Low</option>
         </select>
         {role === 'admin' && agents.length > 0 && (
           <select
@@ -151,6 +157,7 @@ export default function SalesPipelineClient({ initialLeads, agents, currentUserI
                     stages={SALES_STAGES as unknown as SalesStatus[]}
                     onStatusChange={updateStatus}
                     onAssignAgent={assignAgent}
+                    onMoveToOps={moveToOperations}
                   />
                 ))}
               </div>
@@ -206,9 +213,17 @@ export default function SalesPipelineClient({ initialLeads, agents, currentUserI
                         {agent ? (agent.full_name ?? agent.email) : '—'}
                       </td>
                       <td className="px-5 py-3">
-                        <Link href={`/leads/${lead.id}`} className="text-blue-400 hover:text-blue-300 text-xs font-medium">
-                          View
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/leads/${lead.id}`} className="text-blue-400 hover:text-blue-300 text-xs font-medium">
+                            View
+                          </Link>
+                          <button
+                            onClick={() => moveToOperations(lead.id)}
+                            className="text-xs font-medium px-2 py-1 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 hover:bg-emerald-600/30 transition-colors whitespace-nowrap"
+                          >
+                            Move to Ops →
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -228,14 +243,15 @@ function KanbanCard({
   stages,
   onStatusChange,
   onAssignAgent,
+  onMoveToOps,
 }: {
   lead: Enquiry
   agents: { id: string; full_name?: string | null; email?: string | null }[]
   stages: SalesStatus[]
   onStatusChange: (id: string, status: SalesStatus) => void
   onAssignAgent: (id: string, agentId: string) => void
+  onMoveToOps: (id: string) => void
 }) {
-  const agent = agents.find(a => a.id === lead.assigned_sales_agent)
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 hover:border-slate-600 transition-colors">
       <div className="flex items-start justify-between mb-2">
@@ -251,7 +267,7 @@ function KanbanCard({
         <span>Score: {lead.lead_score ?? 0}</span>
         <span>{formatDate(lead.next_followup_at)}</span>
       </div>
-      {/* Quick move */}
+      {/* Stage dropdown */}
       <select
         value={lead.sales_status ?? 'New Lead'}
         onChange={e => onStatusChange(lead.id, e.target.value as SalesStatus)}
@@ -273,6 +289,13 @@ function KanbanCard({
           ))}
         </select>
       )}
+      {/* Move to Operations */}
+      <button
+        onClick={e => { e.stopPropagation(); onMoveToOps(lead.id) }}
+        className="mt-2 w-full bg-emerald-600/20 border border-emerald-600/40 rounded text-[11px] px-1.5 py-1 text-emerald-400 hover:bg-emerald-600/30 transition-colors font-medium"
+      >
+        Move to Operations →
+      </button>
     </div>
   )
 }
